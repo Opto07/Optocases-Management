@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Optometry Case Finder & Manager (Firebase)</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f9fafb; /* Tailwind gray-50 */
+    }
+    .tab {
+      cursor: pointer;
+      padding: 10px 20px;
+      border-bottom: 3px solid transparent;
+      transition: all 0.3s ease;
+      font-weight: 500;
+      color: #4b5563; /* text-gray-600 */
+    }
+    .tab.active {
+      border-color: #2563EB; /* Tailwind blue-600 */
+      color: #2563EB;
+    }
+    .tab:hover {
+      color: #2563EB;
+    }
+    .btn {
+      @apply px-4 py-2 rounded-md font-medium transition-colors duration-150 ease-in-out shadow-sm hover:shadow;
+    }
+    .btn-primary {
+      @apply bg-blue-600 text-white hover:bg-blue-700 focus:ring-4 focus:ring-blue-300;
+    }
+    .btn-secondary {
+      @apply bg-gray-200 text-gray-700 hover:bg-gray-300 focus:ring-4 focus:ring-gray-300;
+    }
+    .btn-warning {
+      @apply bg-yellow-500 text-white hover:bg-yellow-600 focus:ring-4 focus:ring-yellow-300;
+    }
+    .btn-danger {
+      @apply bg-red-600 text-white hover:bg-red-700 focus:ring-4 focus:ring-red-300;
+    }
+    .highlight {
+      background-color: #FEF3C7; /* Tailwind yellow-200 */
+      padding: 0.5px 1px;
+      border-radius: 3px;
+      font-weight: 500;
+    }
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+    .modal-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+    .modal-content {
+      background-color: white;
+      padding: 24px; /* p-6 */
+      border-radius: 8px; /* rounded-lg */
+      box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); /* shadow-xl */
+      width: 90%;
+      max-width: 400px; /* md:max-w-md */
+      text-align: center;
+    }
+    .input-field {
+      @apply w-full border border-gray-300 p-3 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow duration-150;
+    }
+    textarea.input-field {
+        min-height: 80px;
+    }
+    /* Styling for bullet points */
+    .case-details ul {
+        list-style-type: disc;
+        margin-left: 20px; /* Indent the list */
+        margin-bottom: 8px; /* Space after the list */
+    }
+    .case-details ul li {
+        margin-bottom: 4px; /* Space between list items */
+        color: #4b5563; /* text-gray-600 */
+        font-size: 0.875rem; /* text-sm */
+    }
+    .case-details strong {
+        color: #1f2937; /* text-gray-800 */
+    }
+    /* Styling for multiple images */
+    .image-gallery {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px; /* Space between images */
+        margin-top: 12px; /* Space above the gallery */
+    }
+    .image-gallery img {
+        max-width: 100px; /* Limit image width in gallery */
+        height: auto;
+        border-radius: 4px;
+        border: 1px solid #e5e7eb; /* border-gray-200 */
+        object-fit: cover; /* Crop images nicely */
+        cursor: zoom-in; /* Indicate image is clickable */
+        transition: transform 0.2s ease-in-out;
+    }
+    .image-gallery img:hover {
+        transform: scale(1.05); /* Slightly enlarge on hover */
+    }
+     /* Adjust max-width for larger screens if needed */
+    @media (min-width: 640px) { /* sm breakpoint */
+        .image-gallery img {
+            max-width: 150px;
+        }
+    }
+
+    /* Image Modal Styling */
+    .image-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.8); /* Darker background for image modal */
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100; /* Higher z-index than other modals */
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+    .image-modal-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+    .image-modal-content {
+        position: relative; /* Needed for close button positioning */
+        max-width: 95%; /* Max width of the image */
+        max-height: 95%; /* Max height of the image */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+     .image-modal-content img {
+        display: block;
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain; /* Ensure the whole image is visible */
+        border-radius: 8px;
+        box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+     }
+     .image-modal-close {
+        position: absolute;
+        top: -15px; /* Position outside the image content */
+        right: -15px;
+        background-color: rgba(255, 255, 255, 0.8);
+        border: none;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        cursor: pointer;
+        color: #333;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        transition: background-color 0.2s ease;
+     }
+     .image-modal-close:hover {
+        background-color: rgba(255, 255, 255, 1);
+     }
+  </style>
+</head>
+<body class="min-h-screen">
+  <div class="max-w-5xl mx-auto p-4 sm:p-6 lg:p-8">
+    <header class="mb-6 text-center">
+      <h1 class="text-3xl sm:text-4xl font-bold text-gray-800">Optometry Case Manager</h1>
+      <p class="text-sm text-gray-500">Connected to Firebase</p>
+    </header>
+
+    <div class="flex space-x-2 sm:space-x-4 border-b border-gray-200 mb-6">
+      <div id="add-tab" class="tab active">Add/Edit Case</div>
+      <div id="search-tab" class="tab">Search Cases</div>
+    </div>
+
+    <div id="add-section">
+      <form id="case-form" class="space-y-5 bg-white p-6 rounded-lg shadow-md">
+        <h2 class="text-2xl font-semibold text-gray-700 mb-4" id="form-title">Add New Case</h2>
+        <div>
+          <label for="disease" class="block text-sm font-medium text-gray-700 mb-1">Disease Name</label>
+          <input type="text" id="disease" placeholder="e.g., Allergic Conjunctivitis" class="input-field" required>
+        </div>
+        <div>
+          <label for="signs" class="block text-sm font-medium text-gray-700 mb-1">Signs</label>
+          <textarea id="signs" placeholder="e.g., Redness, Chemosis, Papillae (each on a new line)" class="input-field"></textarea>
+        </div>
+        <div>
+          <label for="symptoms" class="block text-sm font-medium text-gray-700 mb-1">Symptoms</label>
+          <textarea id="symptoms" placeholder="e.g., Itching, Watering, Foreign body sensation (each on a new line)" class="input-field"></textarea>
+        </div>
+        <div>
+          <label for="history" class="block text-sm font-medium text-gray-700 mb-1">Patient History</label>
+          <textarea id="history" placeholder="e.g., Seasonal allergies, Contact lens wearer (each on a new line)" class="input-field"></textarea>
+        </div>
+        <div>
+          <label for="management" class="block text-sm font-medium text-gray-700 mb-1">Management Plan</label>
+          <textarea id="management" placeholder="e.g., Antihistamine drops, Cold compresses (each on a new line)" class="input-field"></textarea>
+        </div>
+        <div>
+          <label for="image-urls" class="block text-sm font-medium text-gray-700 mb-1">Image URLs (Optional)</label>
+          <textarea id="image-urls" placeholder="Enter image URLs separated by commas (e.g., url1, url2, url3)" class="input-field"></textarea>
+          <p class="mt-1 text-xs text-gray-500">Enter multiple image links separated by commas. Direct file upload is not yet supported.</p>
+        </div>
+        <input type="hidden" id="edit-key">
+        <div class="flex space-x-3 pt-2">
+            <button type="submit" class="btn btn-primary w-full sm:w-auto">Save Case</button>
+            <button type="button" id="clear-form-button" class="btn btn-secondary w-full sm:w-auto">Clear Form</button>
+        </div>
+      </form>
+    </div>
+
+    <div id="search-section" class="hidden">
+      <div class="mb-6 flex flex-col sm:flex-row sm:space-x-3 space-y-3 sm:space-y-0">
+        <input type="text" id="search-input" placeholder="Search by disease, sign, symptom, history..." class="input-field flex-grow">
+        <button id="clear-search-button" class="btn btn-secondary w-full sm:w-auto">Clear Search</button>
+      </div>
+      <div id="results-container" class="space-y-6">
+        </div>
+      <div id="no-results-message" class="hidden text-center text-gray-500 py-10">
+        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+          <path vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+        </svg>
+        <h3 class="mt-2 text-sm font-medium text-gray-900">No cases found</h3>
+        <p class="mt-1 text-sm text-gray-500">Try adjusting your search terms or add a new case.</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="notification-modal" class="modal-overlay">
+    <div class="modal-content">
+      <p id="notification-message" class="text-lg"></p>
+      <button id="notification-close-button" class="btn btn-primary mt-4">OK</button>
+    </div>
+  </div>
+
+  <div id="confirmation-modal" class="modal-overlay">
+      <div class="modal-content">
+          <h3 class="text-lg font-medium text-gray-900" id="confirmation-title">Confirm Action</h3>
+          <p id="confirmation-message" class="mt-2 text-sm text-gray-600"></p>
+          <div class="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">
+              <button id="confirm-action-button" type="button" class="w-full btn btn-danger col-start-2">Confirm</button>
+              <button id="cancel-action-button" type="button" class="w-full btn btn-secondary mt-3 sm:mt-0 col-start-1">Cancel</button>
+          </div>
+      </div>
+  </div>
+
+  <div id="image-modal" class="image-modal-overlay">
+      <div class="image-modal-content">
+          <img id="modal-image" src="" alt="Case Image">
+          <button id="image-modal-close" class="image-modal-close">&times;</button>
+      </div>
+  </div>
+
+
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+  <script>
+    // Firebase Configuration (Ensure this is your actual Firebase config)
+    const firebaseConfig = {
+      apiKey: "AIzaSyAQpUMz7KcsnJQarLUBXFQ_CA94-usR_Jg", // Replace with your actual API key if different
+      authDomain: "optocase-e3e4c.firebaseapp.com",
+      databaseURL: "https://optocase-e3e4c-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "optocase-e3e4c",
+      storageBucket: "optocase-e3e4c.firebasestorage.app",
+      messagingSenderId: "374466016258",
+      appId: "1:374466016258:web:8486bbd1fac33b26b5631b"
+    };
+
+    // Initialize Firebase (ensure it's initialized only once)
+    // Added a try...catch block for initialization errors
+    try {
+        if (firebase.apps.length === 0) {
+            firebase.initializeApp(firebaseConfig);
+            console.log("Firebase initialized successfully.");
+        } else {
+            console.log("Firebase already initialized.");
+        }
+    } catch (error) {
+        console.error("Firebase initialization failed:", error);
+        showNotification("Error initializing Firebase: " + error.message, "error");
+    }
+
+    // Check if Firebase is initialized before getting database reference
+    const database = firebase.apps.length > 0 ? firebase.database() : null;
+    const casesRef = database ? database.ref('cases') : null; // Reference to 'cases' node
+
+    // DOM Elements (rest remain the same)
+    const addTab = document.getElementById('add-tab');
+    const searchTab = document.getElementById('search-tab');
+    const addSection = document.getElementById('add-section');
+    const searchSection = document.getElementById('search-section');
+    const caseForm = document.getElementById('case-form');
+    const formTitle = document.getElementById('form-title');
+    const diseaseInput = document.getElementById('disease');
+    const signsInput = document.getElementById('signs');
+    const symptomsInput = document.getElementById('symptoms');
+    const historyInput = document.getElementById('history');
+    const managementInput = document.getElementById('management');
+    const imageUrlsInput = document.getElementById('image-urls'); // Corrected ID
+    const editKeyInput = document.getElementById('edit-key');
+    const clearFormButton = document.getElementById('clear-form-button');
+
+    const searchInput = document.getElementById('search-input');
+    const clearSearchButton = document.getElementById('clear-search-button');
+    const resultsContainer = document.getElementById('results-container');
+    const noResultsMessage = document.getElementById('no-results-message');
+
+    const notificationModal = document.getElementById('notification-modal');
+    const notificationMessage = document.getElementById('notification-message');
+    const notificationCloseButton = document.getElementById('notification-close-button');
+
+    const confirmationModal = document.getElementById('confirmation-modal');
+    const confirmationTitle = document.getElementById('confirmation-title');
+    const confirmationMessageText = document.getElementById('confirmation-message');
+    let confirmActionButton = document.getElementById('confirm-action-button');
+    const cancelActionButton = document.getElementById('cancel-action-button');
+
+    // New Image Modal Elements
+    const imageModal = document.getElementById('image-modal');
+    const modalImage = document.getElementById('modal-image');
+    const imageModalCloseButton = document.getElementById('image-modal-close');
+
+
+    let localCasesCache = []; // Local cache for faster searching and displaying of cases
+
+    // --- Utility Functions ---
+    // Shows a notification pop-up
+    function showNotification(message, type = 'success') {
+      notificationMessage.textContent = message;
+      notificationMessage.className = 'text-lg'; // Reset classes
+      if (type === 'error') {
+        notificationMessage.classList.add('text-red-600', 'font-semibold');
+      } else if (type === 'success') {
+        notificationMessage.classList.add('text-green-600', 'font-semibold');
+      } else { // Default to info/general
+         notificationMessage.classList.add('text-blue-600', 'font-semibold');
+      }
+      notificationModal.classList.add('active');
+    }
+
+    // Closes the notification pop-up
+    function closeNotification() {
+      notificationModal.classList.remove('active');
+    }
+
+    // Shows a confirmation dialog
+    function showConfirmation(title, message, onConfirm) {
+        confirmationTitle.textContent = title;
+        confirmationMessageText.textContent = message;
+        confirmationModal.classList.add('active');
+
+        // Clone and replace confirm button to remove previous event listeners, crucial for dynamic onConfirm
+        const newConfirmButton = confirmActionButton.cloneNode(true);
+        confirmActionButton.parentNode.replaceChild(newConfirmButton, confirmActionButton);
+        confirmActionButton = newConfirmButton;
+
+        newConfirmButton.onclick = () => { // Use newConfirmButton for the event listener
+            if (typeof onConfirm === 'function') {
+                onConfirm(); // Execute the callback function passed to onConfirm
+            }
+            closeConfirmation();
+        };
+    }
+
+    // Closes the confirmation dialog
+    function closeConfirmation() {
+        confirmationModal.classList.remove('active');
+    }
+
+    // Shows the image modal
+    function showImageModal(imageUrl) {
+        modalImage.src = imageUrl;
+        imageModal.classList.add('active');
+    }
+
+    // Closes the image modal
+    function closeImageModal() {
+        imageModal.classList.remove('active');
+        modalImage.src = ''; // Clear the image source when closing
+    }
+
+
+    // Escapes special characters in a string for use in a regular expression
+    function escapeRegExp(string) {
+      return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    // Highlights keywords in a given text string
+    function highlightMatch(text, keywords) {
+        if (!keywords || keywords.length === 0 || !text) return text;
+        const escapedKeywords = keywords
+            .map(k => typeof k === 'string' ? k.trim() : '')
+            .filter(k => k.length > 0)
+            .map(k => escapeRegExp(k));
+
+        if (escapedKeywords.length === 0) return text;
+
+        const regex = new RegExp(`(${escapedKeywords.join('|')})`, 'gi');
+        return text.replace(regex, (match) => `<span class="highlight">${match}</span>`);
+    }
+
+    // Helper function to format text as bullet points
+    function formatAsBulletPoints(text, keywords) {
+        if (!text || text.trim() === '') return ''; // Return empty string if text is empty
+
+        // Split the text by newline characters
+        const points = text.split('\n').map(point => point.trim()).filter(point => point.length > 0);
+
+        if (points.length === 0) return ''; // Return empty string if no valid points found
+
+        // Map each point to a list item, applying highlighting
+        const listItems = points.map(point => {
+            // Use the keywords passed to this function for highlighting
+            const highlightedPoint = highlightMatch(point, keywords);
+            return `<li>${highlightedPoint}</li>`;
+        }).join(''); // Join all list items into a single string
+
+        // Wrap list items in an unordered list
+        return `<ul>${listItems}</ul>`;
+    }
+
+
+    // --- Tab Navigation ---
+    // Event listener for the "Add/Edit Case" tab
+    addTab.addEventListener('click', () => {
+      addTab.classList.add('active');
+      searchTab.classList.remove('active');
+      addSection.classList.remove('hidden');
+      searchSection.classList.add('hidden');
+      if (!editKeyInput.value) { // If not editing an existing case
+        formTitle.textContent = 'Add New Case';
+      }
+    });
+
+    // Event listener for the "Search Cases" tab
+    searchTab.addEventListener('click', () => {
+      searchTab.classList.add('active');
+      addTab.classList.remove('active');
+      searchSection.classList.remove('hidden');
+      addSection.classList.add('hidden');
+      renderResults(); // Re-render search results when switching to this tab
+    });
+
+    // --- Case Form Handling (Firebase Integration) ---
+    // Event listener for submitting the case form (add or edit)
+    caseForm.addEventListener('submit', (e) => {
+      e.preventDefault(); // Prevent default form submission
+
+      // Check if Firebase is initialized and database reference is available
+      if (!casesRef) {
+           showNotification("Firebase is not initialized. Cannot save case.", "error");
+           console.error("Attempted to save case, but casesRef is null. Firebase initialization might have failed.");
+           return;
+      }
+
+      // Get image URLs from the textarea, split by comma, trim whitespace, and filter out empty strings
+      const imageUrls = imageUrlsInput.value.split(',')
+                                         .map(url => url.trim())
+                                         .filter(url => url.length > 0);
+
+      const caseData = {
+        disease: diseaseInput.value.trim(),
+        signs: signsInput.value.trim(),
+        symptoms: symptomsInput.value.trim(),
+        history: historyInput.value.trim(),
+        management: managementInput.value.trim(),
+        // Store the array of image URLs
+        images: imageUrls.length > 0 ? imageUrls : null // Store null if no URLs are entered
+      };
+
+      // Basic validation
+      if (!caseData.disease) {
+        showNotification('Disease name is required.', 'error');
+        return;
+      }
+
+      const editKey = editKeyInput.value; // Get the key of the case being edited, if any
+      if (editKey) {
+        // Update existing case in Firebase
+        casesRef.child(editKey).update(caseData)
+          .then(() => {
+            showNotification('Case updated successfully!');
+            resetForm();
+          })
+          .catch(error => {
+            console.error("Error updating case: ", error);
+            showNotification('Error updating case: ' + error.message, 'error');
+          });
+      } else {
+        // Add new case to Firebase
+        casesRef.push(caseData) // push() generates a unique key
+          .then(() => {
+            showNotification('Case saved successfully!');
+            resetForm();
+          })
+          .catch(error => {
+            console.error("Error saving case: ", error);
+            showNotification('Error saving case: ' + error.message, 'error');
+          });
+      }
+    });
+
+    // Event listener for the "Clear Form" button
+    clearFormButton.addEventListener('click', resetForm);
+
+    // Resets the case form to its default state
+    function resetForm() {
+        caseForm.reset(); // Clears all form fields
+        editKeyInput.value = ''; // Clear the hidden edit key
+        formTitle.textContent = 'Add New Case'; // Reset form title
+        diseaseInput.focus(); // Set focus to the disease input field
+    }
+
+    // --- Search and Results Rendering ---
+    // Event listener for the search input field (triggers on every key press)
+    searchInput.addEventListener('input', () => {
+      renderResults();
+    });
+
+    // Event listener for the "Clear Search" button
+    clearSearchButton.addEventListener('click', () => {
+      searchInput.value = ''; // Clear the search input
+      renderResults(); // Re-render results (will show all cases)
+    });
+
+    // Renders the search results based on the current search term and local cache
+    function renderResults() {
+      console.log("Rendering search results..."); // Log when rendering starts
+      const rawSearchTerm = searchInput.value.trim();
+      // Split search term into keywords, convert to lowercase, and filter out empty strings
+      const keywords = rawSearchTerm.toLowerCase().split(/\s+/).filter(k => k.length > 0);
+      resultsContainer.innerHTML = ''; // Clear previous results
+
+      console.log("Search keywords:", keywords); // Log keywords
+      console.log("Local cases cache size:", localCasesCache.length); // Log cache size
+
+      // Filter localCasesCache based on keywords
+      const filteredCases = localCasesCache.filter(c => {
+          if (keywords.length === 0 && rawSearchTerm === '') return true; // Show all if search is empty
+          if (keywords.length === 0 && rawSearchTerm !== '') return false; // Show none if search is just spaces (or other non-keyword chars)
+
+          // Check if all keywords are present in any of the specified fields
+          return keywords.every(keyword => {
+              const inDisease = c.disease && c.disease.toLowerCase().includes(keyword);
+              const inSigns = c.signs && c.signs.toLowerCase().includes(keyword);
+              const inSymptoms = c.symptoms && c.symptoms.toLowerCase().includes(keyword);
+              const inHistory = c.history && c.history.toLowerCase().includes(keyword);
+              const inManagement = c.management && c.management.toLowerCase().includes(keyword); // Added management to search
+              // Also check image URLs for keywords (optional, but can be useful if URLs contain descriptive names)
+              const inImages = Array.isArray(c.images) && c.images.some(url => url.toLowerCase().includes(keyword));
+              return inDisease || inSigns || inSymptoms || inHistory || inManagement || inImages;
+          });
+      });
+
+      console.log("Filtered cases count:", filteredCases.length); // Log filtered count
+
+      // Display "no results" message if applicable
+      if (filteredCases.length === 0) {
+          noResultsMessage.classList.remove('hidden');
+          if (localCasesCache.length === 0 && rawSearchTerm === '') { // No cases in DB and no search term
+              noResultsMessage.querySelector('h3').textContent = 'No cases in the database.';
+              noResultsMessage.querySelector('p').textContent = 'Start by adding some cases using the "Add/Edit Case" tab.';
+          } else { // No matching results for the search term
+              noResultsMessage.querySelector('h3').textContent = 'No cases found matching your search.';
+              noResultsMessage.querySelector('p').textContent = 'Try adjusting your search terms or add a new case.';
+          }
+      } else {
+          noResultsMessage.classList.add('hidden'); // Hide "no results" message
+      }
+
+      // Create and append result cards for each filtered case
+      filteredCases.forEach(c => {
+        const card = document.createElement('div');
+        card.className = 'p-5 border border-gray-200 rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow duration-150 case-details'; // Added case-details class
+
+        // Keywords for highlighting should be based on the raw search term
+        const displayKeywords = rawSearchTerm.trim() === '' ? [] : rawSearchTerm.toLowerCase().split(/\s+/).filter(k => k.length > 0);
+
+        const diseaseHTML = highlightMatch(c.disease, displayKeywords);
+        // Use displayKeywords in formatAsBulletPoints
+        const signsHTML = formatAsBulletPoints(c.signs, displayKeywords);
+        const symptomsHTML = formatAsBulletPoints(c.symptoms, displayKeywords);
+        const historyHTML = formatAsBulletPoints(c.history, displayKeywords);
+        const managementHTML = formatAsBulletPoints(c.management, displayKeywords); // Highlight and format management
+
+        // Generate HTML for multiple images
+        let imagesHTML = '';
+        if (Array.isArray(c.images) && c.images.length > 0) {
+            imagesHTML = '<div class="image-gallery">';
+            c.images.forEach(imageUrl => {
+                // Wrap image in a div to make it clickable and add event listener
+                 imagesHTML += `
+                    <div class="image-container" style="cursor: zoom-in;">
+                        <img src="${imageUrl}" alt="${c.disease || 'Case image'}"
+                             onerror="this.onerror=null; this.src='https://placehold.co/100x100/e2e8f0/94a3b8?text=Img'; this.alt='Image not available';"
+                             data-fullsrc="${imageUrl}"> </div>
+                 `;
+            });
+            imagesHTML += '</div>';
+        }
+
+
+        // Construct card HTML content
+        card.innerHTML = `
+          <h2 class="text-xl font-semibold text-blue-700 mb-2">${diseaseHTML || 'N/A'}</h2>
+          ${signsHTML ? `<p class="text-sm text-gray-700 mb-1"><strong>Signs:</strong></p>${signsHTML}` : ''}
+          ${symptomsHTML ? `<p class="text-sm text-gray-700 mb-1"><strong>Symptoms:</strong></p>${symptomsHTML}` : ''}
+          ${historyHTML ? `<p class="text-sm text-gray-700 mb-1"><strong>History:</strong></p>${historyHTML}` : ''}
+          ${managementHTML ? `<p class="text-sm text-gray-600 mt-2"><strong>Management:</strong></p>${managementHTML}` : ''}
+          ${imagesHTML} <div class="mt-4 flex space-x-2">
+            <button onclick="editCase('${c.key}')" class="btn btn-warning text-xs sm:text-sm">Edit</button>
+            <button onclick="confirmDeleteCase('${c.key}')" class="btn btn-danger text-xs sm:text-sm">Delete</button>
+          </div>
+        `;
+        resultsContainer.appendChild(card);
+      });
+
+      // Add event listeners to images AFTER they are added to the DOM
+      resultsContainer.querySelectorAll('.image-gallery img').forEach(img => {
+          img.addEventListener('click', (e) => {
+              const fullSrc = e.target.getAttribute('data-fullsrc'); // Get the stored full URL
+              if (fullSrc) {
+                  showImageModal(fullSrc);
+              }
+          });
+      });
+
+
+       console.log("Finished rendering results."); // Log when rendering finishes
+    }
+
+    // --- Edit and Delete Case Functions (Firebase) ---
+    // Populates the form with data of the case to be edited
+    window.editCase = function(key) {
+      console.log("Attempting to edit case with key:", key); // Log edit attempt
+      const caseToEdit = localCasesCache.find(c => c.key === key);
+      if (!caseToEdit) {
+        showNotification("Error: Case not found for editing.", "error");
+        console.error("Edit failed: Case with key", key, "not found in local cache.");
+        return;
+      }
+
+      formTitle.textContent = 'Edit Case'; // Change form title
+      diseaseInput.value = caseToEdit.disease || '';
+      signsInput.value = caseToEdit.signs || '';
+      symptomsInput.value = caseToEdit.symptoms || '';
+      historyInput.value = caseToEdit.history || '';
+      managementInput.value = caseToEdit.management || '';
+
+      // Join the array of image URLs with commas for the textarea
+      imageUrlsInput.value = Array.isArray(caseToEdit.images) ? caseToEdit.images.join(', ') : '';
+      console.log("Populating form for editing:", caseToEdit); // Log case data being populated
+
+      editKeyInput.value = key; // Store Firebase key in the hidden input for update operation
+
+      addTab.click(); // Switch to the add/edit tab
+      window.scrollTo({ top: 0, behavior: 'smooth' }); // Scroll to the top of the page
+    }
+
+    // Shows a confirmation dialog before deleting a case
+    window.confirmDeleteCase = function(key) {
+        console.log("Attempting to confirm delete for case with key:", key); // Log confirm delete attempt
+        const caseToDelete = localCasesCache.find(c => c.key === key);
+        if (!caseToDelete) {
+            showNotification("Error: Case not found for deletion.", "error");
+            return;
+        }
+        showConfirmation(
+            'Delete Case', // Title of the confirmation dialog
+            `Are you sure you want to delete the case "${caseToDelete.disease || 'this case'}"? This action cannot be undone.`, // Message
+            () => deleteCase(key) // Function to execute if confirmed
+        );
+    }
+
+    // Deletes a case from Firebase
+    function deleteCase(key) {
+      console.log("Attempting to delete case with key:", key); // Log delete attempt
+       // Check if Firebase is initialized and database reference is available
+      if (!casesRef) {
+           showNotification("Firebase is not initialized. Cannot delete case.", "error");
+           console.error("Attempted to delete case, but casesRef is null. Firebase initialization might have failed.");
+           return;
+      }
+      casesRef.child(key).remove()
+        .then(() => {
+          showNotification('Case deleted successfully.');
+          console.log("Case deleted successfully from Firebase:", key); // Log successful deletion
+          // The real-time listener will automatically update localCasesCache and re-render the results.
+        })
+        .catch(error => {
+          console.error("Error deleting case: ", error);
+          showNotification('Error deleting case: ' + error.message, 'error');
+        });
+    }
+
+    // --- Event Listeners for Modals ---
+    notificationCloseButton.addEventListener('click', closeNotification);
+    cancelActionButton.addEventListener('click', closeConfirmation); // For the confirmation dialog
+
+    // Event listeners for Image Modal
+    imageModalCloseButton.addEventListener('click', closeImageModal);
+    // Close modal if clicking outside the image content
+    imageModal.addEventListener('click', (e) => {
+        if (e.target === imageModal) { // Check if the click was directly on the overlay
+            closeImageModal();
+        }
+    });
+
+
+    // --- Firebase Real-time Data Loading and Listening ---
+    // Loads initial data from Firebase and listens for any changes
+    function loadAndListenForCases() {
+        console.log("Calling loadAndListenForCases..."); // Log when the function is called
+         // Check if Firebase is initialized and database reference is available
+        if (!casesRef) {
+             console.error("casesRef is null. Skipping Firebase data loading.");
+             // Optionally show a message to the user if Firebase didn't initialize
+             if (firebase.apps.length === 0) {
+                 showNotification("Firebase failed to initialize. Data cannot be loaded.", "error");
+             }
+             return;
+        }
+
+        console.log("Setting up Firebase 'value' listener on 'cases' reference."); // Log setting up listener
+        casesRef.on('value', (snapshot) => { // 'value' event triggers on initial load and any data change
+            console.log("Firebase 'value' event triggered."); // Log when event fires
+            const casesData = snapshot.val(); // Get the data object from Firebase
+            console.log("Data received from Firebase:", casesData); // Log the raw data
+
+            localCasesCache = []; // Clear the local cache before repopulating
+            if (casesData) {
+                console.log("Processing received data..."); // Log data processing start
+                // Convert the Firebase object of objects into an array of objects
+                Object.keys(casesData).forEach(key => {
+                    localCasesCache.push({
+                        key: key, // Store the Firebase unique key for each case
+                        ...casesData[key] // Spread the rest of the case data
+                    });
+                });
+                 console.log("Data processed. Populated localCasesCache."); // Log data processing end
+            } else {
+                console.log("No data received from Firebase (casesData is null)."); // Log if no data
+            }
+
+            console.log("Local cases cache size after update:", localCasesCache.length); // Log final cache size
+
+            // Re-render results only if the search tab is currently active,
+            // or if it's the initial load and the search input is empty (to show all cases).
+            // Added check to ensure this only happens after the initial load or when the search tab is active
+             const isInitialLoad = !searchTab.classList.contains('active') && searchInput.value === '';
+            if (searchTab.classList.contains('active') || isInitialLoad) {
+                 console.log("Conditions met for rendering results."); // Log rendering condition
+                 renderResults();
+            } else {
+                 console.log("Conditions not met for rendering results (Search tab not active or search input not empty on non-initial load)."); // Log why rendering didn't happen
+            }
+
+        }, (error) => {
+            console.error("Firebase read failed: " + error.code, error.message);
+            showNotification("Error loading data from Firebase: " + error.message, "error");
+        });
+    }
+
+    // --- Initialization ---
+    // Event listener for when the DOM is fully loaded
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log("DOM fully loaded."); // Log when DOM is ready
+      loadAndListenForCases(); // Load initial data from Firebase and set up real-time listener
+      // The initial render of results (if the search tab is active) will be handled by the callback in loadAndListenForCases.
+    });
+  </script>
+</body>
+</html>
